@@ -279,6 +279,8 @@ function App() {
     return () => clearInterval(timer);
   }, [isGameRunning, time, isLose]);
 
+  console.log("Test");
+
   /* New level || Lose || Win - update states*/
   useEffect(() => {
     if (bulletCount <= 0 || time <= 0) {
