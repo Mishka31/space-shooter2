@@ -1,75 +1,117 @@
 import React, { useEffect, useRef, useState } from "react";
-import ship from "./assets/spaceship.png";
-import space from "./assets/space1-1920.jpg";
-import space2 from "./assets/galaxy2.jpg";
-import bullet from "./assets/bullet.png";
-import { Sprite, Stage, Text } from "@pixi/react";
-import { ColorMatrixFilter } from "pixi.js";
-import { Asteroid } from "./types/types";
+import { AnimatedSprite, Container, Graphics, Sprite, Stage, Text } from "@pixi/react";
+import { Enemy, EnemyId } from "./types/types";
 import { textStyleScore, textStyleStart, textStyleTime, textStyleWin } from "./styles/common";
-import { checkBulletCollision } from "./helpers/common";
-import asteroidsData from "./helpers/asteroidData";
+import { IMG, asteroidsData, bossData, explosion } from "./helpers/enemyData";
+import { bulletBulletCollision, bulletEnemyCollision } from "./helpers/collision";
+import { Filter, bullet, draws, handlers, main, ship, text } from "./helpers/config";
 
 function App() {
-  const [widthCanvas, heightCanvas] = [1280, 720];
-  const [widthShip, heightShip] = [80, 80];
-  const [positionSpaceX, positionSpaceY] = [-400, -200];
-  const stepMoveShip = 10;
-  const stepMoveSpace = 3;
-  const darkFilter = new ColorMatrixFilter();
-  darkFilter.brightness(0.5, true);
-
-  const [spaceX, setSpaceX] = useState<number>(positionSpaceX);
-
-  const [shipX, setShipX] = useState<number>((widthCanvas - widthShip) / 2);
+  const [spaceX, setSpaceX] = useState<number>(main.positionSpaceX);
+  const [shipX, setShipX] = useState<number>((main.widthCanvas - ship.widthShip) / 2);
+  const [enemySize, setEnemySize] = useState<Enemy>(main.enemySize);
 
   const [isBullet, setIsBullet] = useState(false);
   const [bulletX, setBulletX] = useState<number>(shipX);
-  const [bulletY, setBulletY] = useState<number>(650);
-  const [bulletCount, setBulletCount] = useState<number>(10);
+  const [bulletY, setBulletY] = useState<number>(bullet.bulletY);
+  const [bulletCount, setBulletCount] = useState<number>(bullet.bulletCount);
 
-  const [asteroids, setAsteroids] = useState<Asteroid[]>(asteroidsData);
+  const [asteroids, setAsteroids] = useState<EnemyId[]>(asteroidsData);
   const [score, setScore] = useState<number>(0);
+  const [limitScore, setLimitScore] = useState<number>(main.limitScore);
 
   const [time, setTime] = useState(15);
   const [isGameRunning, setIsGameRunning] = useState(false);
   const [isLose, setIsLose] = useState(false);
   const [isWin, setIsWin] = useState(false);
-  const [isLeveBoss, setIsLeveBoss] = useState(false);
+  const [isLevelBoss, setIsLevelBoss] = useState(false);
+  const [isBulletEnemy, setIsBulletEnemy] = useState(false);
+  const [bulletEnemyX, setBulletEnemyX] = useState<number>(bullet.bulletEnemyX);
+  const [bulletEnemyY, setBulletEnemyY] = useState<number>(bullet.bulletEnemyY);
+
+  const [isBulletHit, setIsBulletHit] = useState(false);
+  const [bulletHitX, setBulletHitX] = useState(-100);
+  const [bulletHitY, setBulletHitY] = useState(-100);
 
   let animationFrameId: number | null = null;
   let bulletAnimationFrameId: number | null = null;
+  let bulletEnemyFrameId: number | null = null;
+
   let direction = 0; // 0 for no movement, -1 for left, 1 for right
 
+  const shipXRef = useRef<number>((main.widthCanvas - ship.widthShip) / 2);
+  const bulletYRef = useRef<number>(bullet.bulletY);
+  const bulletEnemyYRef = useRef<number>(bullet.bulletEnemyY);
+  const isClashRef = useRef<boolean>(false);
+
   const moveShip = () => {
-    setShipX((prev) => prev + direction * stepMoveShip);
-    setSpaceX((prev) => prev - direction * stepMoveSpace);
-    setAsteroids((prev) =>
-      prev.map((asteroid) => ({
-        ...asteroid,
-        x: asteroid.x - (direction * stepMoveSpace) / 2,
-      }))
-    );
+    shipXRef.current += direction * ship.stepMoveShip;
+
+    setShipX((prev) => prev + direction * ship.stepMoveShip);
+    setSpaceX((prev) => prev - direction * main.stepMoveSpace);
+    if (!isLevelBoss) {
+      setAsteroids((prev) =>
+        prev.map((asteroid) => ({
+          ...asteroid,
+          x: asteroid.x - (direction * main.stepMoveSpace) / 2,
+        }))
+      );
+    }
     animationFrameId = requestAnimationFrame(moveShip);
   };
 
-  const bulletYRef = useRef<number>(650);
+  const moveBulletEnemy = () => {
+    bulletEnemyYRef.current += main.stepMoveBullet;
+    setBulletEnemyY(bulletEnemyYRef.current);
+
+    if (bulletEnemyYRef.current < main.heightCanvas) {
+      bulletEnemyFrameId = requestAnimationFrame(moveBulletEnemy);
+    } else {
+      bulletEnemyFrameId && cancelAnimationFrame(bulletEnemyFrameId);
+      bulletEnemyFrameId = null;
+      setIsBulletEnemy(false);
+      setBulletEnemyY(bullet.bulletEnemyY);
+      bulletEnemyYRef.current = bullet.bulletEnemyY;
+    }
+  };
 
   const moveBullet = () => {
-    bulletYRef.current -= stepMoveShip;
+    bulletYRef.current -= main.stepMoveBullet;
     setBulletY(bulletYRef.current);
-    const collisionId = checkBulletCollision(asteroids, bulletX, bulletYRef.current);
+
+    let collisionId = bulletEnemyCollision(asteroids, bulletX, bulletYRef.current, isLevelBoss);
+
     if (collisionId >= 0 && bulletAnimationFrameId) {
-      const updatedAsteroids = asteroids.filter((asteroid) => asteroid.id !== collisionId);
+      if (!isLevelBoss) {
+        setBulletHitX(bulletX);
+        setBulletHitY(bulletYRef.current);
+        setIsBulletHit(true);
+
+        setTimeout(() => {
+          setIsBulletHit(false);
+        }, 500);
+      }
+
+      if (isLevelBoss && asteroids[0].health && asteroids[0].health > 1) {
+        setAsteroids((prev) =>
+          prev.map((asteroid) => ({
+            ...asteroid,
+            health: asteroid.health && !isClashRef.current ? asteroid.health - 1 : asteroid.health,
+          }))
+        );
+      } else {
+        const updatedAsteroids = asteroids.filter((asteroid) => asteroid.id !== collisionId);
+        setAsteroids(updatedAsteroids);
+      }
+
       setBulletCount((prev) => prev - 1);
       setScore((prev) => prev + 1);
-      setAsteroids(updatedAsteroids);
       setIsBullet(false);
-      setBulletY(650);
+      setBulletY(bullet.bulletY);
       cancelAnimationFrame(bulletAnimationFrameId);
     } else if (bulletYRef.current <= 0 && bulletAnimationFrameId) {
       setIsBullet(false);
-      setBulletY(650);
+      setBulletY(bullet.bulletY);
       setBulletCount((prev) => prev - 1);
       cancelAnimationFrame(bulletAnimationFrameId);
     } else {
@@ -91,7 +133,7 @@ function App() {
         animationFrameId = requestAnimationFrame(moveShip);
       }
     } else if (e.key === " " && !isBullet) {
-      // setBulletCount((prev) => prev - 1);
+      isClashRef.current = false;
       setIsBullet(true);
     }
   };
@@ -105,19 +147,101 @@ function App() {
   };
 
   const handleStartClick = () => {
+    setIsLevelBoss(false);
+    setEnemySize(main.enemySize);
     setScore(0);
-    setBulletCount(10);
-    setTime(15);
-    setShipX((widthCanvas - widthShip) / 2);
+    setBulletCount(bullet.bulletCount);
+    setTime(main.levelTime);
+    setShipX((main.widthCanvas - ship.widthShip) / 2);
     setIsLose(false);
     setIsWin(false);
     setAsteroids(asteroidsData);
     setIsGameRunning(true);
   };
-  // const handleBossClick = () => {
-  //   setIsGameRunning(true);
-  // };
 
+  /*Then Enemy shuts bullet */
+  useEffect(() => {
+    let bulletTopObj = { x: bulletEnemyX, y: bulletEnemyYRef.current, width: 26 };
+    let bulletBottomObj = { x: bulletX, y: bulletYRef.current, width: 26 };
+    let shipObj = {
+      x: shipXRef.current + 30,
+      y: main.heightCanvas - (ship.heightShip - bullet.bulletEnemyX),
+      width: 50,
+    };
+
+    /*Then enemy bullet connect with ship bullet */
+    if (isLevelBoss && isBulletEnemy && isBullet) {
+      let isContactBullets = bulletBulletCollision(bulletBottomObj, bulletTopObj);
+      if (isContactBullets) {
+        setBulletHitX(bulletX);
+        setBulletHitY(bulletYRef.current);
+        setIsBulletHit(true);
+        setTimeout(() => {
+          setIsBulletHit(false);
+        }, 500);
+
+        isClashRef.current = true;
+        setIsBullet(false);
+        setIsBulletEnemy(false);
+        bulletBottomObj = bullet.initialPosition;
+        bulletTopObj = bullet.initialPosition;
+      } else {
+        isClashRef.current = false;
+      }
+
+      /*Then enemy bullet connect winth ship */
+    } else if (isLevelBoss && isBulletEnemy && !isClashRef.current) {
+      let isHitInShip = bulletBulletCollision(shipObj, bulletTopObj);
+      if (isHitInShip) {
+        setIsBulletEnemy(false);
+        setIsGameRunning(false);
+        setIsLose(true);
+        shipXRef.current = (main.widthCanvas - ship.widthShip) / 2;
+      }
+    }
+  }, [
+    isClashRef.current,
+    isLevelBoss,
+    isBulletEnemy,
+    isBullet,
+    bulletX,
+    bulletEnemyX,
+    bulletYRef.current,
+    shipXRef.current,
+    bulletEnemyYRef.current,
+  ]);
+
+  /*Every 2 seconds shut enemy*/
+  useEffect(() => {
+    if (isLevelBoss && isGameRunning && asteroids.length) {
+      let intervalId = setInterval(() => {
+        setBulletEnemyX(asteroids[0].x + enemySize.x / 2);
+        setIsBulletEnemy(true);
+        isClashRef.current = false;
+        moveBulletEnemy();
+      }, main.intervalShut);
+
+      return () => clearInterval(intervalId);
+    }
+  }, [isLevelBoss, asteroids, isGameRunning]);
+
+  /*Every 2.5 seconds enemy change position random*/
+  useEffect(() => {
+    if (isLevelBoss && isGameRunning && asteroids.length) {
+      const intervalId = setInterval(() => {
+        setAsteroids((prevAsteroids) =>
+          prevAsteroids.map((asteroid) => {
+            const newX = Math.floor(Math.random() * (1000 - 200 + 1)) + 200;
+            return { ...asteroid, x: newX };
+          })
+        );
+      }, main.intervalPosition);
+
+      return () => clearInterval(intervalId);
+    }
+  }, [isLevelBoss, asteroids, isGameRunning]);
+
+  /* Active Window event listeners if Game started */
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
@@ -128,78 +252,97 @@ function App() {
     };
   }, [isGameRunning]);
 
+  /* Change Bullet position by shipX */
   useEffect(() => {
     if (!isBullet) {
-      setBulletX(shipX + widthShip / 2);
+      setBulletX(shipX + ship.widthShip / 2);
     }
-  }, [shipX, isBullet, widthShip]);
+  }, [shipX, isBullet, ship.widthShip]);
 
+  /* Start animation bullet move up */
   useEffect(() => {
     if (isBullet) {
-      bulletYRef.current = 650;
+      bulletYRef.current = bullet.bulletY;
       bulletAnimationFrameId = requestAnimationFrame(moveBullet);
     }
   }, [isBullet]);
 
+  /* Timer */
   useEffect(() => {
     let timer: NodeJS.Timeout;
-
     if (isGameRunning && time > 0) {
-      timer = setInterval(() => {
-        setTime((prevTime) => prevTime - 1);
-      }, 1000);
+      timer = setInterval(() => setTime((prevTime) => prevTime - 1), 1000);
     } else if (time <= 0) {
       setIsGameRunning(false);
       setIsLose(true);
     }
-
-    return () => {
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [isGameRunning, time, isLose]);
 
+  /* New level || Lose || Win - update states*/
   useEffect(() => {
-    if (bulletCount <= 0 && time <= 0) {
+    if (bulletCount <= 0 || time <= 0) {
       setIsGameRunning(false);
       setIsLose(true);
-    } else if (bulletCount && time >= 1 && asteroids.length === 0) {
+    } else if (bulletCount && time >= 1 && asteroids.length === 0 && !isLevelBoss) {
       setIsGameRunning(false);
       setIsWin(true);
       /*Pause before new level*/
       setTimeout(() => {
         setIsGameRunning(true);
         setScore(0);
-        setBulletCount(10);
-        setTime(15);
-        setShipX((widthCanvas - widthShip) / 2);
-        setAsteroids(asteroidsData);
-        setIsLeveBoss(true);
+        setLimitScore(4);
+        setBulletCount(bullet.bulletCount);
+        setTime(main.levelTime);
+        setAsteroids(bossData);
+        setShipX((main.widthCanvas - ship.widthShip) / 2);
+        shipXRef.current = (main.widthCanvas - ship.widthShip) / 2;
+        setEnemySize(main.bossSize);
+        setIsLevelBoss(true);
+        setBulletEnemyX(bossData[0].x);
         setIsLose(false);
         setIsWin(false);
-      }, 2000);
+      }, main.timeoutBeforeLevel);
+    } else if (isLevelBoss && bulletCount && time >= 1 && asteroids.length === 0) {
+      setIsGameRunning(false);
+      setIsWin(true);
+      if (bulletAnimationFrameId) cancelAnimationFrame(bulletAnimationFrameId);
+      if (bulletEnemyFrameId) cancelAnimationFrame(bulletEnemyFrameId);
     }
-  }, [bulletCount, time, asteroids, widthCanvas, widthShip, isLeveBoss]);
+  }, [
+    bulletCount,
+    time,
+    asteroids,
+    main.widthCanvas,
+    ship.widthShip,
+    isLevelBoss,
+    isGameRunning,
+    bulletAnimationFrameId,
+    bulletEnemyFrameId,
+  ]);
 
   return (
     <div style={{ display: "flex", justifyContent: "center" }}>
-      <Stage width={widthCanvas} height={heightCanvas}>
-        {space && space2 && (
+      <Stage width={main.widthCanvas} height={main.heightCanvas}>
+        {IMG.space && IMG.space2 && (
           <Sprite
-            image={isLeveBoss ? space2 : space}
-            filters={[darkFilter]}
+            image={isLevelBoss ? IMG.space2 : IMG.space}
+            filters={[Filter]}
             x={spaceX}
-            y={positionSpaceY}
+            y={main.positionSpaceY}
           />
         )}
         <Text
-          text={`Bullets: ${bulletCount}/10`}
+          text={`${text.bullets}: ${bulletCount}/${bullet.bulletCount}`}
           x={20}
           y={20}
           style={textStyleScore}
           visible={isGameRunning}
         />
         <Text
-          text={`Score: ${score}/6`}
+          text={`${isLevelBoss ? text.health : text.score}: ${
+            isLevelBoss ? asteroids[0]?.health : score
+          }/${limitScore}`}
           x={20}
           y={50}
           style={textStyleScore}
@@ -207,74 +350,58 @@ function App() {
         />
 
         <Text
-          text={"YOU WIN 🤩"}
-          x={widthCanvas / 2}
+          text={text.win}
+          x={main.widthCanvas / 2}
           anchor={0.5}
-          y={heightCanvas / 2}
+          y={main.heightCanvas / 2}
           style={textStyleWin}
           visible={!isGameRunning && !isLose && isWin}
         />
         <Text
-          text={"BOSS FIGHT!"}
-          x={widthCanvas / 2}
-          y={heightCanvas / 2 + 50}
+          text={text.boss}
+          x={main.widthCanvas / 2}
+          y={main.heightCanvas / 2 + 50}
           anchor={0.5}
           style={textStyleStart}
-          visible={!isGameRunning && !isLose && isWin}
-          // interactive
-          // mouseover={() => {
-          //   document.body.style.cursor = "pointer";
-          // }}
-          // mouseout={() => {
-          //   document.body.style.cursor = "default";
-          // }}
-          // pointerdown={handleBossClick}
+          visible={!isGameRunning && !isLose && isWin && !isLevelBoss}
         />
 
         <Text
-          text={"START"}
-          x={widthCanvas / 2}
-          y={heightCanvas / 2}
+          text={text.start}
+          x={main.widthCanvas / 2}
+          y={main.heightCanvas / 2}
           anchor={0.5}
           style={textStyleStart}
           interactive
-          mouseover={() => {
-            document.body.style.cursor = "pointer";
-          }}
-          mouseout={() => {
-            document.body.style.cursor = "default";
-          }}
+          mouseover={handlers.handleMouseOver}
+          mouseout={handlers.handleMouseOut}
           pointerdown={handleStartClick}
           visible={!isGameRunning && !isLose && !isWin}
         />
 
         <Text
-          text={"YOU LOSE 😕"}
-          x={widthCanvas / 2}
-          y={heightCanvas / 2}
+          text={text.lose}
+          x={main.widthCanvas / 2}
+          y={main.heightCanvas / 2}
           anchor={0.5}
           style={textStyleTime}
           visible={!isGameRunning && isLose}
         />
 
         <Text
-          text={"PLAY AGAIN"}
-          x={widthCanvas / 2}
-          y={heightCanvas / 2 + 50}
+          text={text.again}
+          x={main.widthCanvas / 2}
+          y={main.heightCanvas / 2 + 50}
           anchor={0.5}
           style={textStyleStart}
           interactive
-          mouseover={() => {
-            document.body.style.cursor = "pointer";
-          }}
-          mouseout={() => {
-            document.body.style.cursor = "default";
-          }}
+          mouseover={handlers.handleMouseOver}
+          mouseout={handlers.handleMouseOut}
           pointerdown={handleStartClick}
           visible={!isGameRunning && isLose}
         />
         <Text
-          text={`Time: ${time}`}
+          text={`${text.time}: ${time}`}
           x={1210}
           y={35}
           anchor={0.5}
@@ -282,35 +409,50 @@ function App() {
           visible={isGameRunning}
         />
 
-        {asteroids.map((asteroid, index) => (
-          <Sprite
-            key={index}
-            image={asteroid.image}
-            width={40}
-            height={40}
-            x={asteroid.x}
-            y={asteroid.y}
-            visible={isGameRunning}
-          />
+        {asteroids.map((enemy) => (
+          <Container key={enemy.id} visible={isGameRunning}>
+            <Sprite
+              image={enemy.image}
+              width={enemySize.x}
+              height={enemySize.y}
+              x={enemy.x}
+              y={enemy.y}
+              visible={isGameRunning}
+            />
+            <Graphics
+              draw={(g) => draws.healthBar(g, enemy.x, enemy.y, enemy.health, enemy.maxHealth)}
+              visible={isLevelBoss}
+            />
+          </Container>
         ))}
         <Sprite
-          image={ship}
-          width={widthShip}
-          height={heightShip}
+          image={IMG.ship}
+          width={ship.widthShip}
+          height={ship.heightShip}
           x={shipX}
-          y={heightCanvas - heightShip}
+          y={main.heightCanvas - ship.heightShip}
           visible={isGameRunning}
         />
-        <Sprite
-          image={bullet}
-          width={20}
-          height={20}
-          rotation={4.7}
+        <AnimatedSprite
+          width={80}
+          height={80}
           anchor={0.5}
-          y={bulletY}
-          x={bulletX}
-          visible={isBullet}
+          textures={explosion}
+          loop={false}
+          isPlaying={isBulletHit}
+          initialFrame={0}
+          animationSpeed={0.2}
+          x={bulletHitX}
+          y={bulletHitY}
+          visible={isBulletHit}
         />
+
+        <Graphics
+          visible={isBulletEnemy}
+          draw={(g) => draws.bulletEnemy(g, bulletEnemyX, bulletEnemyY)}
+        />
+
+        <Graphics draw={(g) => draws.bullet(g, bulletX, bulletY)} visible={isBullet} />
       </Stage>
     </div>
   );
