@@ -1,6 +1,11 @@
 # Space shooter
 
+## Level 1
 ![](./src/assets/png/scapeShooter.jpg)
+
+## Level 2 Boss
+![](./src/assets/png/spaceShooterLvl2.jpg)
+
 ## Available Scripts
 
 In the project directory, you can run:
