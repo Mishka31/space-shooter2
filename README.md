@@ -1,6 +1,6 @@
 # Space shooter
 
-![](https://cdn.pixabay.com/photo/2017/08/24/03/41/starry-sky-2675322_1280.jpg)
+![asdasd](https://cdn.pixabay.com/photo/2017/08/24/03/41/starry-sky-2675322_1280.jpg)
 
 ## Available Scripts
 
