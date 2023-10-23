@@ -194,6 +194,7 @@ function App() {
     setAsteroids(asteroidsData);
     setIsGameRunning(true);
     playLevel1();
+    setSpaceX(main.positionSpaceX);
     setIsLevel2(false);
   };
 
