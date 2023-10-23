@@ -128,7 +128,6 @@ function App() {
       setIsBullet(false);
       setBulletY(bullet.bulletY);
       setBulletCount((prev) => prev - 1);
-      // cancelAnimationFrame(bulletAnimationFrameId);
     } else {
       bulletAnimationFrameId = requestAnimationFrame(moveBullet);
     }
@@ -144,7 +143,6 @@ function App() {
       if (!animationFrameId) {
         animationFrameId = requestAnimationFrame(moveShip);
       }
-      // && shipX + ship.widthShip < main.widthCanvas
     } else if (e.key === "ArrowRight") {
       direction = 1;
       if (!animationFrameId) {
@@ -313,6 +311,7 @@ function App() {
     } else if (bulletCount >= 0 && time >= 0 && asteroids.length === 0 && !isLevelBoss) {
       setIsGameRunning(false);
       setIsWin(true);
+      setIsLevelBoss(true);
       /*Pause before new level*/
       setTimeout(() => {
         setIsGameRunning(true);
@@ -324,7 +323,6 @@ function App() {
         setShipX((main.widthCanvas - ship.widthShip) / 2);
         shipXRef.current = (main.widthCanvas - ship.widthShip) / 2;
         setEnemySize(main.bossSize);
-        setIsLevelBoss(true);
         setBulletEnemyX(bossData[0].x);
         setIsLose(false);
         setIsWin(false);

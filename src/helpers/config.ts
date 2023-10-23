@@ -8,7 +8,7 @@ export const main = {
   positionSpaceX: -400,
   positionSpaceY: -200,
   stepMoveSpace: 3,
-  stepMoveBullet: 15,
+  stepMoveBullet: 10,
   limitScore: 6,
   enemySize: { x: 40, y: 40 },
   bossSize: { x: 80, y: 80 },
