@@ -1,7 +1,7 @@
 import { TextStyle } from "pixi.js";
 
 export const textStyleScore: TextStyle = new TextStyle({
-  fill: "white",
+  fill: "red",
   fontSize: 24,
 });
 
