@@ -13,7 +13,7 @@ export const main = {
   enemySize: { x: 40, y: 40 },
   bossSize: { x: 80, y: 80 },
   levelTime: 60,
-  timeoutBeforeLevel: 2000,
+  timeoutBeforeLevel: 2500,
   timeoutBetweenShoot: 700,
   intervalShoot: 2000,
   intervalPosition: 2500,

@@ -2,11 +2,22 @@ import React, { useEffect, useRef, useState } from "react";
 import { AnimatedSprite, Container, Graphics, Sprite, Stage, Text } from "@pixi/react";
 import { Enemy, EnemyId } from "./types/types";
 import { textStyleScore, textStyleStart, textStyleTime, textStyleWin } from "./styles/common";
-import { IMG, asteroidsData, bossData, explosion } from "./helpers/enemyData";
+import { IMG, asteroidsData, bossData, explosion, mp3 } from "./helpers/enemyData";
 import { bulletBulletCollision, bulletEnemyCollision } from "./helpers/collision";
 import { Filter, bullet, draws, handlers, main, ship, text } from "./helpers/config";
+import useSound from "use-sound";
 
 function App() {
+  /* Sounds */
+  const [playLevel1, { stop: stopLevel1 }] = useSound(mp3.level1, { volume: 0.5 });
+  const [playLevel2, { stop: stopLevel2 }] = useSound(mp3.level2, { volume: 0.5 });
+  const [playSwichLevel] = useSound(mp3.swichLevel, { volume: 0.5 });
+  const [playShoot] = useSound(mp3.shoot, { volume: 0.7 });
+  const [playBoom] = useSound(mp3.boom, { volume: 0.7 });
+  const [playEnemyShoot] = useSound(mp3.enemyShoot, { volume: 0.7 });
+  const [playLose] = useSound(mp3.lose, { volume: 0.6 });
+  const [playWin] = useSound(mp3.win, { volume: 0.4 });
+
   const [spaceX, setSpaceX] = useState<number>(main.positionSpaceX);
   const [shipX, setShipX] = useState<number>((main.widthCanvas - ship.widthShip) / 2);
   const [enemySize, setEnemySize] = useState<Enemy>(main.enemySize);
@@ -22,6 +33,7 @@ function App() {
 
   const [time, setTime] = useState(main.levelTime);
   const [isGameRunning, setIsGameRunning] = useState(false);
+  const [isLevel2, setIsLevel2] = useState(false);
   const [isLose, setIsLose] = useState(false);
   const [isWin, setIsWin] = useState(false);
   const [isLevelBoss, setIsLevelBoss] = useState(false);
@@ -107,6 +119,7 @@ function App() {
       }
 
       if (isLevelBoss && asteroids[0].health && asteroids[0].health > 1) {
+        playBoom();
         setAsteroids((prev) =>
           prev.map((asteroid) => ({
             ...asteroid,
@@ -118,7 +131,7 @@ function App() {
         const updatedAsteroids = asteroids.filter((asteroid) => asteroid.id !== collisionId);
         setAsteroids(updatedAsteroids);
       }
-
+      playBoom();
       setBulletCount((prev) => prev - 1);
       setScore((prev) => prev + 1);
       setIsBullet(false);
@@ -180,6 +193,8 @@ function App() {
     setIsWin(false);
     setAsteroids(asteroidsData);
     setIsGameRunning(true);
+    playLevel1();
+    setIsLevel2(false);
   };
 
   /*Then Enemy shoots bullet */
@@ -202,7 +217,7 @@ function App() {
         setTimeout(() => {
           setIsBulletHit(false);
         }, 500);
-
+        playBoom();
         isClashRef.current = true;
         setIsBullet(false);
         setIsBulletEnemy(false);
@@ -218,6 +233,9 @@ function App() {
       if (isHitInShip) {
         setIsBulletEnemy(false);
         setIsGameRunning(false);
+        stopLevel1();
+        stopLevel2();
+        playLose();
         setIsLose(true);
         shipXRef.current = (main.widthCanvas - ship.widthShip) / 2;
       }
@@ -238,6 +256,7 @@ function App() {
   useEffect(() => {
     if (isLevelBoss && isGameRunning && asteroids.length) {
       let intervalId = setInterval(() => {
+        playEnemyShoot();
         setBulletEnemyX(asteroids[0].x + enemySize.x / 2);
         setIsBulletEnemy(true);
         isClashRef.current = false;
@@ -286,6 +305,7 @@ function App() {
   /* Start animation bullet move up */
   useEffect(() => {
     if (isBullet) {
+      playShoot();
       bulletYRef.current = bullet.bulletY;
       bulletAnimationFrameId = requestAnimationFrame(moveBullet);
     }
@@ -299,6 +319,9 @@ function App() {
     } else if (time <= 0) {
       setIsGameRunning(false);
       setIsLose(true);
+      stopLevel1();
+      stopLevel2();
+      playLose();
     }
     return () => clearInterval(timer);
   }, [isGameRunning, time, isLose]);
@@ -308,12 +331,19 @@ function App() {
     if ((bulletCount <= 0 && asteroids.length > 0) || (time <= 0 && asteroids.length > 0)) {
       setIsGameRunning(false);
       setIsLose(true);
+      stopLevel2();
+      stopLevel1();
+      playLose();
     } else if (bulletCount >= 0 && time >= 0 && asteroids.length === 0 && !isLevelBoss) {
       setIsGameRunning(false);
       setIsWin(true);
       setIsLevelBoss(true);
+      stopLevel1();
+      // playWin();
+      playSwichLevel();
       /*Pause before new level*/
       setTimeout(() => {
+        playLevel2();
         setIsGameRunning(true);
         setScore(0);
         setLimitScore(4);
@@ -326,10 +356,13 @@ function App() {
         setBulletEnemyX(bossData[0].x);
         setIsLose(false);
         setIsWin(false);
+        setIsLevel2(true);
       }, main.timeoutBeforeLevel);
-    } else if (isLevelBoss && bulletCount >= 0 && time >= 0 && !asteroids.length) {
+    } else if (isLevelBoss && bulletCount >= 0 && time >= 0 && !asteroids.length && isLevel2) {
       setIsGameRunning(false);
       setIsWin(true);
+      stopLevel2();
+      playWin();
       if (bulletAnimationFrameId) cancelAnimationFrame(bulletAnimationFrameId);
       if (bulletEnemyFrameId) cancelAnimationFrame(bulletEnemyFrameId);
     }
@@ -424,15 +457,16 @@ function App() {
           anchor={0.5}
           y={main.heightCanvas / 2}
           style={textStyleWin}
-          visible={!isGameRunning && !isLose && isWin}
+          visible={!isGameRunning && !isLose && isWin && isLevel2}
         />
+
         <Text
           text={text.boss}
           x={main.widthCanvas / 2}
-          y={main.heightCanvas / 2 + 50}
+          y={main.heightCanvas / 2}
           anchor={0.5}
           style={textStyleStart}
-          visible={!isGameRunning && !isLose && isWin && !isLevelBoss}
+          visible={!isGameRunning && !isLose && isWin && isLevelBoss && !isLevel2}
         />
 
         <Text

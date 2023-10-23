@@ -1,14 +1,23 @@
-import asteroid0 from "../assets/asteroid0.png";
-import asteroid1 from "../assets/asteroid1.png";
-import asteroid2 from "../assets/asteroid2.png";
-import asteroid3 from "../assets/asteroid3.png";
-import asteroid4 from "../assets/asteroid4.png";
-import asteroid5 from "../assets/asteroid5.png";
-import explotion2 from "../assets/explotion2.png";
-import boss7 from "../assets/monster.png";
-import ship from "../assets/spaceship.png";
-import space from "../assets/space1-1920.jpg";
-import space2 from "../assets/galaxy2.jpg";
+import asteroid0 from "../assets/png/asteroid0.png";
+import asteroid1 from "../assets/png/asteroid1.png";
+import asteroid2 from "../assets/png/asteroid2.png";
+import asteroid3 from "../assets/png/asteroid3.png";
+import asteroid4 from "../assets/png/asteroid4.png";
+import asteroid5 from "../assets/png/asteroid5.png";
+import explotion2 from "../assets/png/explotion2.png";
+import boss7 from "../assets/png/monster.png";
+import ship from "../assets/png/spaceship.png";
+import space from "../assets/png/space1-1920.jpg";
+import space2 from "../assets/png/galaxy2.jpg";
+// sounds
+import shoot from "../assets/sounds/shoot.mp3";
+import boom from "../assets/sounds/boom.mp3";
+import level1 from "../assets/sounds/1level.mp3";
+import level2 from "../assets/sounds/2level.mp3";
+import enemyShoot from "../assets/sounds/enemyShoot.mp3";
+import lose from "../assets/sounds/lose.mp3";
+import win from "../assets/sounds/win.mp3";
+import swichLevel from "../assets/sounds/swichLevel.mp3";
 import { EnemyId } from "../types/types";
 import { BaseTexture, Rectangle, Texture } from "pixi.js";
 
@@ -31,14 +40,17 @@ export const IMG = {
   space2,
 };
 
-// export const explosion = [
-//   Texture.from(asteroid0),
-//   Texture.from(asteroid1),
-//   Texture.from(asteroid2),
-//   Texture.from(asteroid3),
-//   Texture.from(asteroid4),
-//   Texture.from(asteroid5),
-// ];
+export const mp3 = {
+  level1,
+  level2,
+  shoot,
+  enemyShoot,
+  lose,
+  win,
+  boom,
+  swichLevel,
+};
+
 const texture = BaseTexture.from(explotion2);
 
 // Define rectangular areas for each animation frame in the texture
