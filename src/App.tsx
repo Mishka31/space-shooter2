@@ -196,6 +196,7 @@ function App() {
     playLevel1();
     setSpaceX(main.positionSpaceX);
     setIsLevel2(false);
+    shipXRef.current = (main.widthCanvas - ship.widthShip) / 2;
   };
 
   /*Then Enemy shoots bullet */
