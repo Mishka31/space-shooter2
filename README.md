@@ -1,6 +1,6 @@
 # Space shooter
 
-![](https://cdn.pixabay.com/photo/2017/08/24/03/41/starry-sky-2675322_1280.jpg)
+![](./src/assets/png/scapeShooter.jpg)
 ## Available Scripts
 
 In the project directory, you can run:
