@@ -14,7 +14,7 @@ export const main = {
   bossSize: { x: 80, y: 80 },
   levelTime: 60,
   timeoutBeforeLevel: 2000,
-  intervalShut: 2000,
+  intervalShoot: 2000,
   intervalPosition: 2500,
 };
 

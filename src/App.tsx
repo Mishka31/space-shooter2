@@ -40,6 +40,7 @@ function App() {
   let direction = 0; // 0 for no movement, -1 for left, 1 for right
 
   const shipXRef = useRef<number>((main.widthCanvas - ship.widthShip) / 2);
+  const bossXRef = useRef<number>(0);
   const bulletYRef = useRef<number>(bullet.bulletY);
   const bulletEnemyYRef = useRef<number>(bullet.bulletEnemyY);
   const isClashRef = useRef<boolean>(false);
@@ -63,6 +64,8 @@ function App() {
     }
     animationFrameId = requestAnimationFrame(moveShip);
   };
+
+  /*Fn for boss shoots*/
   const moveBulletEnemy = () => {
     bulletEnemyYRef.current += main.stepMoveBullet;
     setBulletEnemyY(bulletEnemyYRef.current);
@@ -78,11 +81,18 @@ function App() {
     }
   };
 
+  /* Fn for Ship shoots */
   const moveBullet = () => {
     bulletYRef.current -= main.stepMoveBullet;
     setBulletY(bulletYRef.current);
 
-    let collisionId = bulletEnemyCollision(asteroids, bulletX, bulletYRef.current, isLevelBoss);
+    let collisionId = bulletEnemyCollision(
+      asteroids,
+      bulletX,
+      bulletYRef.current,
+      isLevelBoss,
+      bossXRef.current
+    );
 
     if (collisionId >= 0 && bulletAnimationFrameId) {
       if (!isLevelBoss) {
@@ -122,6 +132,7 @@ function App() {
     }
   };
 
+  /* Fn for hanler lesener then buttons is pressed */
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!isGameRunning || bulletCount <= 0) return;
 
@@ -142,6 +153,7 @@ function App() {
     }
   };
 
+  /* Fn for hanler lesener then buttons is unpressed */
   const handleKeyUp = () => {
     direction = 0;
     if (animationFrameId) {
@@ -150,6 +162,7 @@ function App() {
     }
   };
 
+  /* Fn for hanler lesener then click on "Start Game" */
   const handleStartClick = () => {
     setIsLevelBoss(false);
     setEnemySize(main.enemySize);
@@ -163,7 +176,7 @@ function App() {
     setIsGameRunning(true);
   };
 
-  /*Then Enemy shuts bullet */
+  /*Then Enemy shoots bullet */
   useEffect(() => {
     let bulletTopObj = { x: bulletEnemyX, y: bulletEnemyYRef.current, width: 26 };
     let bulletBottomObj = { x: bulletX, y: bulletYRef.current, width: 26 };
@@ -215,7 +228,7 @@ function App() {
     bulletEnemyYRef.current,
   ]);
 
-  /*Every 2 seconds shut enemy*/
+  /*Every 2 seconds shoot enemy*/
   useEffect(() => {
     if (isLevelBoss && isGameRunning && asteroids.length) {
       let intervalId = setInterval(() => {
@@ -223,7 +236,7 @@ function App() {
         setIsBulletEnemy(true);
         isClashRef.current = false;
         moveBulletEnemy();
-      }, main.intervalShut);
+      }, main.intervalShoot);
 
       return () => clearInterval(intervalId);
     }
@@ -236,6 +249,7 @@ function App() {
         setAsteroids((prevAsteroids) =>
           prevAsteroids.map((asteroid) => {
             const newX = Math.floor(Math.random() * (main.widthCanvas - main.bossSize.x));
+            bossXRef.current = newX;
             return { ...asteroid, x: newX };
           })
         );

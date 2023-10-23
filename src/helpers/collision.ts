@@ -4,13 +4,14 @@ export function bulletEnemyCollision(
   asteroids: EnemyId[],
   bulletX: number,
   bulletY: number,
-  boss: boolean
+  boss: boolean,
+  bossX: number
 ) {
   for (let i = 0; i < asteroids.length; i++) {
     const asteroid = asteroids[i];
     if (
-      bulletX > asteroid.x &&
-      bulletX < asteroid.x + (boss ? 80 : 40) &&
+      bulletX > (boss ? bossX : asteroid.x) &&
+      bulletX < (boss ? bossX : asteroid.x) + (boss ? 80 : 40) &&
       bulletY + 20 > asteroid.y &&
       bulletY < asteroid.y + (boss ? 80 : 40)
     ) {
