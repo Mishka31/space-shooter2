@@ -40,10 +40,11 @@ function App() {
   let direction = 0; // 0 for no movement, -1 for left, 1 for right
 
   const shipXRef = useRef<number>((main.widthCanvas - ship.widthShip) / 2);
-  const bossXRef = useRef<number>(0);
+  const bossXRef = useRef<number>(bossData[0].x || 0);
   const bulletYRef = useRef<number>(bullet.bulletY);
   const bulletEnemyYRef = useRef<number>(bullet.bulletEnemyY);
   const isClashRef = useRef<boolean>(false);
+  const lastShootTimeRef = useRef<number>(0);
 
   /* Move ship right/left but not over Canvas */
   const moveShip = () => {
@@ -112,7 +113,8 @@ function App() {
             health: asteroid.health && !isClashRef.current ? asteroid.health - 1 : asteroid.health,
           }))
         );
-      } else {
+        if (isClashRef.current) bulletYRef.current = bullet.bulletY;
+      } else if (!isClashRef.current) {
         const updatedAsteroids = asteroids.filter((asteroid) => asteroid.id !== collisionId);
         setAsteroids(updatedAsteroids);
       }
@@ -121,12 +123,12 @@ function App() {
       setScore((prev) => prev + 1);
       setIsBullet(false);
       setBulletY(bullet.bulletY);
-      cancelAnimationFrame(bulletAnimationFrameId);
+      bulletYRef.current = bullet.bulletY;
     } else if (bulletYRef.current <= 0 && bulletAnimationFrameId) {
       setIsBullet(false);
       setBulletY(bullet.bulletY);
       setBulletCount((prev) => prev - 1);
-      cancelAnimationFrame(bulletAnimationFrameId);
+      // cancelAnimationFrame(bulletAnimationFrameId);
     } else {
       bulletAnimationFrameId = requestAnimationFrame(moveBullet);
     }
@@ -135,6 +137,7 @@ function App() {
   /* Fn for hanler lesener then buttons is pressed */
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!isGameRunning || bulletCount <= 0) return;
+    const currentTime = Date.now();
 
     if (e.key === "ArrowLeft") {
       direction = -1;
@@ -147,9 +150,14 @@ function App() {
       if (!animationFrameId) {
         animationFrameId = requestAnimationFrame(moveShip);
       }
-    } else if (e.key === " " && !isBullet) {
+    } else if (
+      e.key === " " &&
+      !isBullet &&
+      currentTime - lastShootTimeRef.current >= main.timeoutBetweenShoot
+    ) {
       isClashRef.current = false;
       setIsBullet(true);
+      lastShootTimeRef.current = currentTime;
     }
   };
 
@@ -240,7 +248,7 @@ function App() {
 
       return () => clearInterval(intervalId);
     }
-  }, []);
+  }, [asteroids, enemySize.x, isGameRunning, isLevelBoss]);
 
   /*Every 2.5 seconds enemy change position random*/
   useEffect(() => {
