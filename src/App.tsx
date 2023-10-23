@@ -339,8 +339,8 @@ function App() {
       setIsWin(true);
       setIsLevelBoss(true);
       stopLevel1();
-      // playWin();
       playSwichLevel();
+
       /*Pause before new level*/
       setTimeout(() => {
         playLevel2();
